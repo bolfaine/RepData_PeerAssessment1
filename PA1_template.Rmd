@@ -1,0 +1,129 @@
+---
+title: "Reproducible Research - Project1"
+author: "Alexey Bolfaine"
+date: "9/19/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(ggplot2)
+library(broom)
+opts_chunk$set(echo = TRUE, results = 'hold')
+```
+
+## 1 - GETTING & LOAD THE DATA
+
+```{r}
+download.file('https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip', 'dataset.zip', method = 'curl')
+unzip('dataset.zip')
+```
+
+```{r}
+activity <- read.csv("activity.csv", header = TRUE)
+```
+
+## 2 - HISTOGRAM - TOTAL NUMBER OF STEPS PER DAY
+
+```{r}
+StepsPerDay <- tapply(activity$steps, activity$date, sum)
+```
+
+```{r}
+hist(StepsPerDay, xlab = "Number of Steps", main = "Histogram - Steps per Day")
+```
+
+## 3 - CALCULATE MEAN AND MEDIAN OF STEPs TAKEN PER DAY
+
+```{r}
+MeanPerDay <- mean(StepsPerDay, na.rm = TRUE)
+MedianPerDay <- median(StepsPerDay, na.rm = TRUE)
+```
+## 4 - PLOT AVERAGE NUMBER OF STEPS TAKEN
+
+```{r}
+StepsPerInterval <- tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+plot(as.numeric(names(StepsPerInterval)), 
+     StepsPerInterval, 
+     xlab = "Interval", 
+     ylab = "Steps", 
+     main = "Average Daily Activity Pattern", 
+     type = "l")
+```
+
+##  5 - The 5-minute interval that, on average, contains the maximum number of steps
+
+```{r}
+maxInterval <- names(sort(StepsPerInterval, decreasing = TRUE)[1])
+maxSteps <- sort(StepsPerInterval, decreasing = TRUE)[1]
+```
+The 5-minute interval that, on average, contains the maximum number of steps is interval `r maxInterval`, at `r maxSteps.
+
+## 6 - Code to describe and show a strategy for imputing missing data
+
+```{r}
+NA.vals <- sum(is.na(activity$steps))
+```
+Number of missing values: `r NA.vals`
+
+## Here we fill the missing data with avg number of step, replace missing by avg number of steps taken.
+
+```{r}
+MissingData <- activity[is.na(activity$steps),]
+DataWithoutMissing <- activity[!is.na(activity$steps),]
+Mean_without_missing <- with(DataWithoutMissing, tapply(steps, DataWithoutMissing$interval, mean))
+MissingData$steps <- Mean_without_missing
+MergeDataActivity <- rbind(DataWithoutMissing, MissingData)
+MergeDataActivity <- MergeDataActivity[order(MergeDataActivity$date), ]
+```
+
+## 7 - Histogram of the total number of steps taken each day after missing values are inputed.
+
+```{r}
+HistMergeDataActivity <- tapply(MergeDataActivity$steps, MergeDataActivity$date, sum)
+hist(HistMergeDataActivity, xlab = "Number of Steps", main = "Histogram: Steps per Day (Imputed data)")
+```
+
+```{r}
+MeanPerDayMergedDataActivity <- mean(HistMergeDataActivity, na.rm = TRUE)
+MedianPerDayMergedDataActivity <- median(HistMergeDataActivity, na.rm = TRUE)
+```
+
+There are no difference between MEAN with missing data: `r MeanPerDayMergedDataActivity ` and replaced missing data: `r MedianPerDayMergedDataActivity` . but there is a little difference in Median: `r MeanPerDay` and `r MedianPerDay`.
+
+## 8 - Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends.
+
+## Creating new vector.
+
+```{r}
+MergeDataActivity$day <- ifelse(weekdays(as.Date(MergeDataActivity$date)) == "Saturday" | weekdays(as.Date(MergeDataActivity$date)) == "Sunday", "weekend", "weekday")
+```
+## Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+# Average steps per interval for weekends
+```{r}
+StepsPerInterval.weekend <- tapply(MergeDataActivity[MergeDataActivity$day == "weekend" ,]$steps, MergeDataActivity[MergeDataActivity$day == "weekend" ,]$interval, mean, na.rm = TRUE)
+```
+# Average steps per interval for weekdays
+
+```{r}
+StepsPerInterval.weekday <- tapply(MergeDataActivity[MergeDataActivity$day == "weekday" ,]$steps, MergeDataActivity[MergeDataActivity$day == "weekday" ,]$interval, mean, na.rm = TRUE)
+```
+```{r}
+par(mfrow=c(1,2))
+
+plot(as.numeric(names(StepsPerInterval.weekday)), 
+     StepsPerInterval.weekday, 
+     xlab = "Interval", 
+     ylab = "Steps", 
+     main = "Activity Pattern (Weekdays)", 
+     type = "l")
+
+plot(as.numeric(names(StepsPerInterval.weekend)), 
+     StepsPerInterval.weekend, 
+     xlab = "Interval", 
+     ylab = "Steps", 
+     main = "Activity Pattern (Weekends)", 
+     type = "l")
+```
+
